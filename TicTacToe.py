@@ -99,7 +99,7 @@ def play_game(board):
 		#Play my move
 		board = play_move(board)
 		print_board(board)
-		game_history.append(''.join(map(str,board)))
+		game_history.append(' '.join(map(str,board)))
 		victor = evaluate_win(board)
 		
 		#Ask for opponent move if victor is not decided
@@ -109,11 +109,12 @@ def play_game(board):
 			#Apply opponent move
 			board[int(opponent_move)]= 2
 			print_board(board)
-			game_history.append(''.join(map(str,board)))
+			game_history.append(' '.join(map(str,board)))
 			victor = evaluate_win(board)
 	
 	return victor, game_history
 
+	
 # Pick and play best move
 def play_move(board):
 	max_score = 0
@@ -159,6 +160,7 @@ def play_move(board):
 	
 	return board
 	
+	
 # Check board for victory condition
 def evaluate_win(board):
 	victor = 0
@@ -171,6 +173,7 @@ def evaluate_win(board):
 		victor = 3
 	return victor
 
+	
 # Critic
 # Given game history, generates training examples	
 def generate_train_data(victor, game_history):
@@ -189,6 +192,39 @@ def generate_train_data(victor, game_history):
 		score -= 10
 	
 	return training_data
+	
+	
+# Generalizer:
+# Train the algorithm using training examples and update the weights
+def train_algo(train_data):
+	train_rate = 0.1
+	global weights
+	for example in train_data:
+		#Unpack board and rating
+		board = list(map(int, example[0].split(' ')))
+		rating = example[1]
+		#print(board)
+		#print(rating)
+		
+		#Calculate board score using current weights
+		score = board_score(board)
+		attributes = get_featureset(board)
+		#print("Training::" + str(rating) + " " + str(score))
+		#print(attributes)
+		
+		#Update weights
+		revised_weights = []
+		for idx, weight in enumerate(weights):
+			revised_weights.append(weight + train_rate * (rating - score) * attributes[idx])
+			#print("weight loop")
+			#print(weight)
+			#print(rating - score)
+			#print(attributes[idx])
+		#print(revised_weights)
+		weights = revised_weights
+	
+	return revised_weights
+	
 	
 # Main function
 def main():
@@ -210,6 +246,10 @@ def main():
 	#Convert game history to training examples
 	train_data = generate_train_data(victor, game_history)
 	print(train_data)
+	
+	#Update hypothesis from training data
+	new_weights = train_algo(train_data)
+	print(new_weights)
 	
 	
 if __name__ == '__main__':
