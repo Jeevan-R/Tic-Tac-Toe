@@ -174,7 +174,21 @@ def evaluate_win(board):
 # Critic
 # Given game history, generates training examples	
 def generate_train_data(victor, game_history):
-	pass
+	#Set max score based on victor
+	if victor == 1:
+		score = 100
+	elif victor == 2:
+		score = 0
+	else:
+		score = 50
+	
+	training_data = []
+	#Decrement from max_score for each board position
+	for board in reversed(game_history):
+		training_data.append([board, score])
+		score -= 10
+	
+	return training_data
 	
 # Main function
 def main():
@@ -195,6 +209,7 @@ def main():
 
 	#Convert game history to training examples
 	train_data = generate_train_data(victor, game_history)
+	print(train_data)
 	
 	
 if __name__ == '__main__':
