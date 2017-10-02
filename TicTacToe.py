@@ -1,3 +1,7 @@
+#Global constants and variables
+WIN_INDICES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]]
+TOKEN_XREF = [[0, 3, 6], [0,4], [0, 5, 7], [1,3], [1, 4, 6, 7], [1, 5], [2, 3, 7], [2, 4], [2, 5, 6]]
+weights = [0.01] * 8
 
 # Experiment Generator:
 # Generate first board
@@ -16,22 +20,73 @@ def print_board(board):
 	print()
 
 # Convert board to feature set
-def get_featureset(board)
+def get_featureset(board):
 	#initialize x0 = 1
 	featureset = [1]
+	
 	#x1 = number of turns
-	featureset.append(sum(1 for elem in board if elem = 1))
+	featureset.append(sum(1 for elem in board if elem == 1))
+	
 	#x2 = number of open lines - player 1
 	#x3 = number of open lines - player 2
 	#x4 = number of open lines with 2 or more tokens - player 1
 	#x5 = number of open lines with 2 or more tokens - player 2
+	x2, x3, x4, x5 = 0, 0, 0, 0
+	p1_lines, p2_lines = [], []
+	for row in WIN_INDICES:
+		board_slice = [board[idx] for idx in row if board[idx] > 0]
+		#print("inside get features")
+		#print(board_slice)
+		#print(len(set(board_slice)))
+		if len(set(board_slice)) == 1:
+			if board_slice[0] == 1:
+				x2 += 1
+				p1_lines.append(1)
+				p2_lines.append(0)
+				if len(board_slice) > 1:
+					x4 += 1
+			else :
+				x3 += 1
+				p2_lines.append(1)
+				p1_lines.append(0)
+				if len(board_slice) > 1:
+					x5 += 1
+		else :
+			p1_lines.append(0)
+			p2_lines.append(0)
+	#print("attrib 2-5: " + str(x2) + " " + str(x3) + " " + str(x4) + " " + str(x5))
+	
 	#x6 = number of points with 2 or more open lines - player 1
 	#x7 = number of points with 2 or more open lines - player 2
+	x6, x7 = 0, 0
+	import operator
+	#print(p1_lines)
+	#print(p2_lines)
+	if p1_lines.count(1) or p2_lines.count(1):
+		for row in TOKEN_XREF:
+			if p1_lines.count(1):
+				if operator.itemgetter(*row)(p1_lines).count(1) > 1:
+					x6 += 1
+			if p2_lines.count(1):
+				if operator.itemgetter(*row)(p2_lines).count(1) > 1:
+					x7 += 1
+	
+	#Construct and return featureset
+	featureset.extend([x2, x3, x4, x5, x6, x7])
 	return featureset
+	
 	
 # Calculate board score
 def board_score(board):
-	return 5
+	#Convert board to featureset
+	attributes = get_featureset(board)
+	#print("Board attributes: ")
+	#print(board)
+	#print(attributes)
+	#print(sum([w*a for w, a in zip(weights, attributes)]))
+	
+	#Compute and return rating
+	return sum([w*a for w, a in zip(weights, attributes)])
 	
 	
 # Performance System:
@@ -40,7 +95,25 @@ def play_game(board):
 	#Count number of blank spaces on board
 	open_spaces = sum(1 for elem in board if not elem)
 	print("Open spaces=" + str(open_spaces))
-	
+
+	victor = 0
+	while not victor and board.count(0) > 0:
+		#Play my move
+		board = play_move(board)
+		print_board(board)
+		victor = evaluate_win(board)
+		
+		#Ask for opponent move if victor is not decided
+		if not victor:
+			opponent_move = input("Enter your move..")
+			
+			#Apply opponent move
+			board[int(opponent_move)]= 2
+			print_board(board)
+			victor = evaluate_win(board)
+
+# Pick and play best move
+def play_move(board):
 	max_score = 0
 
 	#For each space where next token can be added
@@ -70,27 +143,15 @@ def play_game(board):
 						move = idx
 	
 	#Select move with highest board score
-	board[move] = 1
-	print_board(board)
-	if (evaluate_win(board)):
-		pass
-		
+	if max_score > 0:
+		board[move] = 1
 	
-	#Ask for opponent move
-	opponent_move = input("Enter your move..")
+	return board
 	
-	#Apply opponent move
-	board[int(opponent_move)]= 2
-	print_board(board)
-	if (evaluate_win(board)):
-		pass
-	
-		
 # Check board for victory condition
 def evaluate_win(board):
-	win_indices = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]]
 	victor = 0
-	for row in win_indices:
+	for row in WIN_INDICES:
 		board_slice = [board[idx] for idx in row]
 		if len(set(board_slice)) == 1:
 			victor = set(board_slice).pop()
