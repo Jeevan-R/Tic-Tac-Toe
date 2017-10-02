@@ -92,10 +92,6 @@ def board_score(board):
 # Performance System:
 # Given initial board, generates game history
 def play_game(board):
-	#Count number of blank spaces on board
-	open_spaces = sum(1 for elem in board if not elem)
-	print("Open spaces=" + str(open_spaces))
-
 	victor = 0
 	while not victor and board.count(0) > 0:
 		#Play my move
@@ -116,35 +112,44 @@ def play_game(board):
 def play_move(board):
 	max_score = 0
 
+	#Count number of blank spaces on board
+	open_spaces = sum(1 for elem in board if not elem)
+	#print("Open spaces=" + str(open_spaces))
+	
 	#For each space where next token can be added
 	#Identify moves for opponent
 	#For each space and opponent move. calculate board score
-	#Keep track of board with max score and select it as my move	
-	for idx, elem in enumerate(board):
-		#Identify open spaces on board
-		if not elem:
-			#Copy board to temp copy
-			next_board = list(board)
-			#Mark my move
-			next_board[idx] = 1
-			#Iterate thru possible opponent moves
-			for nb_idx, nb_elem in enumerate(next_board):
-				if not nb_elem:
-					#Mark opponent move
-					next_board[nb_idx] = 2
-					#print_board(next_board)
-					#Calculate board score
-					score = board_score(next_board)
-					#Reset opponent move
-					next_board[nb_idx] = 0
-					#Check max score
-					if score > max_score:
-						max_score = score
-						move = idx
+	#Keep track of board with max score and select it as my move
+	if open_spaces > 1:
+		for idx, elem in enumerate(board):
+			#Identify open spaces on board
+			if not elem:
+				#Copy board to temp copy
+				next_board = list(board)
+				#Mark my move
+				next_board[idx] = 1
+				#Iterate thru possible opponent moves
+				for nb_idx, nb_elem in enumerate(next_board):
+					if not nb_elem:
+						#Mark opponent move
+						next_board[nb_idx] = 2
+						#print_board(next_board)
+						#Calculate board score
+						score = board_score(next_board)
+						#Reset opponent move
+						next_board[nb_idx] = 0
+						#Check max score
+						if score > max_score:
+							max_score = score
+							move = idx
+		
+		#Select move with highest board score
+		if max_score > 0:
+			board[move] = 1
 	
-	#Select move with highest board score
-	if max_score > 0:
-		board[move] = 1
+	#If only one space is available, select it for next move
+	elif open_spaces == 1:
+		board[board.index(0)] = 1
 	
 	return board
 	
@@ -156,10 +161,14 @@ def evaluate_win(board):
 		if len(set(board_slice)) == 1:
 			victor = set(board_slice).pop()
 			break
+	if not victor and not board.count(0):
+		victor = 3
 	if victor == 1:
 		print("Sorry, you lost!")
 	if victor == 2:
 		print("Congrats, you won!")
+	if victor == 3:
+		print("It is a tie!")
 	return victor
 	
 # Main function
