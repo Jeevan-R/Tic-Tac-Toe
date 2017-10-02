@@ -93,10 +93,13 @@ def board_score(board):
 # Given initial board, generates game history
 def play_game(board):
 	victor = 0
+	game_history = []
+	
 	while not victor and board.count(0) > 0:
 		#Play my move
 		board = play_move(board)
 		print_board(board)
+		game_history.append(''.join(map(str,board)))
 		victor = evaluate_win(board)
 		
 		#Ask for opponent move if victor is not decided
@@ -106,7 +109,10 @@ def play_game(board):
 			#Apply opponent move
 			board[int(opponent_move)]= 2
 			print_board(board)
+			game_history.append(''.join(map(str,board)))
 			victor = evaluate_win(board)
+	
+	return victor, game_history
 
 # Pick and play best move
 def play_move(board):
@@ -163,21 +169,33 @@ def evaluate_win(board):
 			break
 	if not victor and not board.count(0):
 		victor = 3
-	if victor == 1:
-		print("Sorry, you lost!")
-	if victor == 2:
-		print("Congrats, you won!")
-	if victor == 3:
-		print("It is a tie!")
 	return victor
+
+# Critic
+# Given game history, generates training examples	
+def generate_train_data(victor, game_history):
+	pass
 	
 # Main function
 def main():
+	#Generate experiment
 	board = generate_experiment()
 	#print(board)
 	print_board(board)
-	play_game(board)
 	
+	#Play game till it is either won or tied
+	victor, game_history = play_game(board)
+	print(game_history)
+	if victor == 1:
+		print("Sorry, you lost!")
+	elif victor == 2:
+		print("Congrats, you won!")
+	elif victor == 3:
+		print("It is a tie!")
 
+	#Convert game history to training examples
+	train_data = generate_train_data(victor, game_history)
+	
+	
 if __name__ == '__main__':
 	main()
