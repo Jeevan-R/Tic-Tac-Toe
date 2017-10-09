@@ -134,7 +134,7 @@ def play_game(board, weights):
 	
 # Pick and play best move
 def play_move(board, weights):
-	max_score = 0
+	max_score = -100
 
 	#Count number of blank spaces on board
 	open_spaces = sum(1 for elem in board if not elem)
@@ -166,10 +166,12 @@ def play_move(board, weights):
 						if score > max_score:
 							max_score = score
 							move = idx
+							#print("Inside max score:" + str(move))
 		
 		#Select move with highest board score
-		if max_score > 0:
+		if move >= 0:
 			board[move] = 1
+			#print("selected move: " + str(move))
 	
 	#If only one space is available, select it for next move
 	elif open_spaces == 1:
@@ -251,6 +253,28 @@ def save_train_data(train_data):
 			#writer.writerow(' '.join(map(str,instance)))
 			writer.writerow(instance)
 			
+
+# Update new weights in file
+def update_weights(new_weights):
+	#Delete archive file
+	import os
+	try:
+		os.remove("weights_archive.txt")
+	except FileNotFoundError:
+		pass
+	
+	#Rename existing file to archive
+	try:
+		os.rename("weights.txt", "weights_archive.txt")
+	except FileNotFoundError:
+		pass
+	
+	#Write to weights file
+	file = open("weights.txt", "w")
+	for weight in new_weights:
+		file.write(str(weight) + '\n')
+	file.close()
+	
 	
 # Main function
 def main():
@@ -285,6 +309,9 @@ def main():
 	new_weights = train_algo(train_data, weights)
 	print("New weights:")
 	print(new_weights)
+	
+	#Write new weights to file
+	update_weights(new_weights)
 	
 	
 if __name__ == '__main__':
