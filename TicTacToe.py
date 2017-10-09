@@ -242,6 +242,16 @@ def train_algo(train_data, weights):
 	return revised_weights
 	
 	
+# Save training data to CSV dump
+def save_train_data(train_data):
+	import csv
+	with open("data.csv", "a", newline='') as f:
+		writer = csv.writer(f)
+		for instance in train_data:
+			#writer.writerow(' '.join(map(str,instance)))
+			writer.writerow(instance)
+			
+	
 # Main function
 def main():
 	#Generate experiment
@@ -267,6 +277,9 @@ def main():
 	#Convert game history to training examples
 	train_data = generate_train_data(victor, game_history)
 	print(train_data)
+	
+	#Append training data to CSV dump
+	save_train_data(train_data)
 	
 	#Update hypothesis from training data
 	new_weights = train_algo(train_data, weights)
