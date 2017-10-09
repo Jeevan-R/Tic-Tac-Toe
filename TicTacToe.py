@@ -1,7 +1,6 @@
 #Global constants and variables
 WIN_INDICES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]]
 TOKEN_XREF = [[0, 3, 6], [0,4], [0, 5, 7], [1,3], [1, 4, 6, 7], [1, 5], [2, 3, 7], [2, 4], [2, 5, 6]]
-weights = [0.01] * 8
 
 # Experiment Generator:
 # Generate first board
@@ -19,6 +18,24 @@ def print_board(board):
 	print(' '.join(['X' if elem == 1 else 'O' if elem == 2 else '_' for elem in board[6:9]]))
 	print()
 
+
+# Read weights from file
+def read_weights():
+	try:
+		weights = []
+		file = open("weights.txt", "r")
+		for line in file:
+			weights.append(float(line.strip()))
+		file.close()
+	except FileNotFoundError:
+		weights = [0.01] * 8
+	else:
+		if len(weights) == 0:
+			weights = [0.01] * 8
+	
+	return weights
+	
+	
 # Convert board to feature set
 def get_featureset(board):
 	#initialize x0 = 1
@@ -77,7 +94,7 @@ def get_featureset(board):
 	
 	
 # Calculate board score
-def board_score(board):
+def board_score(board, weights):
 	#Convert board to featureset
 	attributes = get_featureset(board)
 	#print("Board attributes: ")
@@ -91,13 +108,13 @@ def board_score(board):
 	
 # Performance System:
 # Given initial board, generates game history
-def play_game(board):
+def play_game(board, weights):
 	victor = 0
 	game_history = []
 	
 	while not victor and board.count(0) > 0:
 		#Play my move
-		board = play_move(board)
+		board = play_move(board, weights)
 		print_board(board)
 		game_history.append(' '.join(map(str,board)))
 		victor = evaluate_win(board)
@@ -116,7 +133,7 @@ def play_game(board):
 
 	
 # Pick and play best move
-def play_move(board):
+def play_move(board, weights):
 	max_score = 0
 
 	#Count number of blank spaces on board
@@ -142,7 +159,7 @@ def play_move(board):
 						next_board[nb_idx] = 2
 						#print_board(next_board)
 						#Calculate board score
-						score = board_score(next_board)
+						score = board_score(next_board, weights)
 						#Reset opponent move
 						next_board[nb_idx] = 0
 						#Check max score
@@ -196,9 +213,8 @@ def generate_train_data(victor, game_history):
 	
 # Generalizer:
 # Train the algorithm using training examples and update the weights
-def train_algo(train_data):
+def train_algo(train_data, weights):
 	train_rate = 0.1
-	global weights
 	for example in train_data:
 		#Unpack board and rating
 		board = list(map(int, example[0].split(' ')))
@@ -207,7 +223,7 @@ def train_algo(train_data):
 		#print(rating)
 		
 		#Calculate board score using current weights
-		score = board_score(board)
+		score = board_score(board, weights)
 		attributes = get_featureset(board)
 		#print("Training::" + str(rating) + " " + str(score))
 		#print(attributes)
@@ -233,8 +249,13 @@ def main():
 	#print(board)
 	print_board(board)
 	
+	#Get initial weights
+	weights = read_weights()
+	print("Initial weights:")
+	print(weights)
+	
 	#Play game till it is either won or tied
-	victor, game_history = play_game(board)
+	victor, game_history = play_game(board, weights)
 	print(game_history)
 	if victor == 1:
 		print("Sorry, you lost!")
@@ -248,7 +269,8 @@ def main():
 	print(train_data)
 	
 	#Update hypothesis from training data
-	new_weights = train_algo(train_data)
+	new_weights = train_algo(train_data, weights)
+	print("New weights:")
 	print(new_weights)
 	
 	
