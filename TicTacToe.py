@@ -134,7 +134,7 @@ def play_game(board, weights):
 	
 # Pick and play best move
 def play_move(board, weights):
-	max_score = -100
+	#max_score = -100
 
 	#Count number of blank spaces on board
 	open_spaces = sum(1 for elem in board if not elem)
@@ -163,7 +163,12 @@ def play_move(board, weights):
 						#Reset opponent move
 						next_board[nb_idx] = 0
 						#Check max score
-						if score > max_score:
+						if "max_score" in locals():
+							if score > max_score:
+								max_score = score
+								move = idx
+								#print("Inside max score:" + str(move))
+						else:
 							max_score = score
 							move = idx
 							#print("Inside max score:" + str(move))
@@ -171,7 +176,7 @@ def play_move(board, weights):
 		#Select move with highest board score
 		if move >= 0:
 			board[move] = 1
-			#print("selected move: " + str(move))
+			print("selected move: " + str(move))
 	
 	#If only one space is available, select it for next move
 	elif open_spaces == 1:
