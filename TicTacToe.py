@@ -38,7 +38,14 @@ class ExperimentGenerator:
 				
 		
 # Performance System:
-class PerformanceSystem:	
+class PerformanceSystem:
+	player_nbr = 0
+	game_history = []
+	
+	# Constructor
+	def __init__(self, player_nbr):
+		self.player_nbr = player_nbr
+
 	# Convert board to feature set
 	def get_featureset(cls, board):
 		#initialize x0 = 1
@@ -46,12 +53,15 @@ class PerformanceSystem:
 		
 		#x1 = number of turns
 		featureset.append(sum(1 for elem in board if elem == 1))
-		
-		#x2 = number of open lines - player 1
-		#x3 = number of open lines - player 2
-		#x4 = number of open lines with 2 or more tokens - player 1
-		#x5 = number of open lines with 2 or more tokens - player 2
-		x2, x3, x4, x5 = 0, 0, 0, 0
+
+		#x2 = number of open lines with 1 token - player 1
+		#x3 = number of open lines with 1 token - player 2
+		#x4 = number of open lines with 0 tokens
+		#x5 = number of open lines with 2 tokens - player 1
+		#x6 = number of open lines with 2 tokens - player 2
+		#x7 = number of lines with 3 tokens - player 1
+		#x8 = number of lines with 3 tokens - player 2
+		x2, x3, x4, x5, x6, x7, x8 = 0, 0, 0, 0, 0, 0, 0
 		p1_lines, p2_lines = [], []
 		for row in WIN_INDICES:
 			board_slice = [board[idx] for idx in row if board[idx] > 0]
@@ -63,22 +73,30 @@ class PerformanceSystem:
 					x2 += 1
 					p1_lines.append(1)
 					p2_lines.append(0)
-					if len(board_slice) > 1:
-						x4 += 1
-				else :
+					if len(board_slice) > 2:
+						x7 += 1
+					elif len(board_slice) > 1:
+						x5 += 1
+				elif board_slice[0] == 2:
 					x3 += 1
 					p2_lines.append(1)
 					p1_lines.append(0)
-					if len(board_slice) > 1:
-						x5 += 1
+					if len(board_slice) > 2:
+						x8 += 1
+					elif len(board_slice) > 1:
+						x6 += 1
+				else:
+					x4 += 1
+					p2_lines.append(1)
+					p1_lines.append(1)
 			else :
 				p1_lines.append(0)
 				p2_lines.append(0)
-		#print("attrib 2-5: " + str(x2) + " " + str(x3) + " " + str(x4) + " " + str(x5))
+		#print("attrib 2-8: " + str(x2) + " " + str(x3) + " " + str(x4) + " " + str(x5) + " " + str(x6) + " " + str(x7) + " " + str(x8))
 		
-		#x6 = number of points with 2 or more open lines - player 1
-		#x7 = number of points with 2 or more open lines - player 2
-		x6, x7 = 0, 0
+		#x9 = number of points with 2 or more open lines - player 1
+		#x10 = number of points with 2 or more open lines - player 2
+		x9, x10 = 0, 0
 		import operator
 		#print(p1_lines)
 		#print(p2_lines)
@@ -86,18 +104,18 @@ class PerformanceSystem:
 			for row in TOKEN_XREF:
 				if p1_lines.count(1):
 					if operator.itemgetter(*row)(p1_lines).count(1) > 1:
-						x6 += 1
+						x9 += 1
 				if p2_lines.count(1):
 					if operator.itemgetter(*row)(p2_lines).count(1) > 1:
-						x7 += 1
+						x10 += 1
 		
 		#Construct and return featureset
-		featureset.extend([x2, x3, x4, x5, x6, x7])
+		featureset.extend([x2, x3, x4, x5, x6, x7, x8, x9, x10])
 		return featureset
 
 		
 	# Calculate board score
-	def board_score(cls, attributes, weights):
+	def board_score_estimate(cls, attributes, weights):
 		#print("Board attributes: ")
 		#print(board)
 		#print(attributes)
@@ -135,10 +153,15 @@ class PerformanceSystem:
 	# Pick and play best move
 	def play_move(self, board, weights):
 		#max_score = -100
+		
+		opp_player_nbr = lambda: 2 if self.player_nbr == 1 else 2
 
 		#Count number of blank spaces on board
 		open_spaces = sum(1 for elem in board if not elem)
 		#print("Open spaces=" + str(open_spaces))
+		
+		#Add board to game history
+		self.game_history.append(' '.join(map(str,board)))
 		
 		#For each space where next token can be added
 		#Identify moves for opponent
@@ -151,17 +174,17 @@ class PerformanceSystem:
 					#Copy board to temp copy
 					next_board = list(board)
 					#Mark my move
-					next_board[idx] = 1
+					next_board[idx] = self.player_nbr
 					#Iterate thru possible opponent moves
 					for nb_idx, nb_elem in enumerate(next_board):
 						if not nb_elem:
 							#Mark opponent move
-							next_board[nb_idx] = 2
+							next_board[nb_idx] = opp_player_nbr()
 							#print_board(next_board)
 							#Convert board to featureset
 							attributes = self.get_featureset(next_board)
 							#Calculate board score
-							score = self.board_score(attributes, weights)
+							score = self.board_score_estimate(attributes, weights)
 							#Reset opponent move
 							next_board[nb_idx] = 0
 							#Check max score
@@ -177,12 +200,12 @@ class PerformanceSystem:
 			
 			#Select move with highest board score
 			if move >= 0:
-				board[move] = 1
+				board[move] = self.player_nbr
 				print("selected move: " + str(move))
 		
 		#If only one space is available, select it for next move
 		elif open_spaces == 1:
-			board[board.index(0)] = 1
+			board[board.index(0)] = self.player_nbr
 		
 		return board
 		
@@ -205,28 +228,24 @@ class Critic:
 	# Given game history, generates training examples	
 	def generate_train_data(self, victor, game_history, weights):
 		#Set final score based on victor
-		skip = False
 		if victor == 1:
 			final_score = 100
-			skip = True
 		elif victor == 2:
 			final_score = -100
 		else:
 			final_score = 0
 		
-		training_data = []
-		#Decrement from max_score for each board position
+		training_data = []		
+		#Assign final_score for final board position
+		#Assign score estimate of successor board for other board positions
 		for idx, board in enumerate(reversed(game_history)):
-			if skip:
-				skip = False
-				continue
 			if idx == 0 or idx == 1:
 				score = final_score
 			else:
 				print(next_board)
 				#Convert board to featureset
-				attributes = PerformanceSystem().get_featureset(next_board)
-				score = PerformanceSystem().board_score(attributes, weights)
+				attributes = PerformanceSystem(1).get_featureset(next_board)
+				score = PerformanceSystem(1).board_score_estimate(attributes, weights)
 			#Assign current board as successor board for next board
 			next_board = list(map(int, board.split(' ')))
 			#Append training data
@@ -252,8 +271,8 @@ class Generalizer:
 			
 			
 			#Calculate board score using current weights
-			attributes = PerformanceSystem().get_featureset(board)
-			score = PerformanceSystem().board_score(attributes, weights)
+			attributes = PerformanceSystem(1).get_featureset(board)
+			score = PerformanceSystem(1).board_score_estimate(attributes, weights)
 			#print("Training::" + str(rating) + " " + str(score))
 			#print(attributes)
 			
@@ -317,16 +336,32 @@ def main():
 	print(weights)
 	
 	#Initialize players
-	player1 = PerformanceSystem()
+	player1 = PerformanceSystem(1)
+	player2 = PerformanceSystem(2)
 		
 	#Play game till it is either won or tied
-	victor, game_history = player1.play_game(board, weights)
-	print(game_history)
+	victor = 0
+	while not victor and board.count(0) > 0:
+		#Player 1 move
+		board = player1.play_move(board, weights)
+		experiment.print_board(board)
+		victor = player1.evaluate_win(board)
+	
+		#Player 2 move if victor is not decided
+		if not victor and board.count(0) > 0:
+			board = player2.play_move(board, weights)
+			experiment.print_board(board)
+			victor = player2.evaluate_win(board)
+			
+	#victor, game_history = player1.play_game(board, weights)
+	#game_history = [player1.game_history, player2.game_history]
+	game_history = player1.game_history
+	#print(game_history)
 	if victor == 1:
-		print("Sorry, you lost!")
+		print("Player 1 wins!")
 	elif victor == 2:
-		print("Congrats, you won!")
-	elif victor == 3:
+		print("Player 2 wins!")
+	else:
 		print("It is a tie!")
 
 	#Convert game history to training examples
