@@ -324,7 +324,7 @@ def main():
 	if default_play:
 		print('Training the AI...')
 		#Play AI vs AI for 2000 games
-		for i in range(0,2000):
+		for i in range(0, 2000):
 			#Generate experiment
 			experiment = ExperimentGenerator()
 			board = experiment.generate_experiment()
@@ -392,24 +392,19 @@ def main():
 	
 	#Get weights
 	weights = experiment.read_weights()
-	print(weights)
+	#print(weights)
 	
-	#Toss and initilize players
-	import random
-	play_first = lambda: True if random.random() >= 0.5 else False
-	if play_first():
-		ai = PerformanceSystem(1)
-	else:
-		ai = PerformanceSystem(2)
+	#Toss and initialize players
+	#AI will always be Player 2
+	ai = PerformanceSystem(2)
 		
 	#Play game till it is either won or tied
 	victor = 0
 	while not victor and board.count(0) > 0:
-		#If human has to play first
-		if ai.player_nbr == 2:
-			board = ai.human_move(board, 1)
-			experiment.print_board(board)
-			victor = ai.evaluate_win(board)
+		#Human plays first
+		board = ai.human_move(board, 1)
+		experiment.print_board(board)
+		victor = ai.evaluate_win(board)
 		
 		#Play AI move
 		if not victor and board.count(0) > 0:
@@ -417,13 +412,7 @@ def main():
 			experiment.print_board(board)
 			ai.game_history.append(' '.join(map(str,board)))
 			victor = ai.evaluate_win(board)
-		
-		#If human has to play second
-		if ai.player_nbr == 1 and not victor and board.count(0) > 0:
-			board = ai.human_move(board, 2)
-			experiment.print_board(board)
-			victor = ai.evaluate_win(board)
-	
+			
 	if victor == ai.player_nbr:
 		print("AI wins! Sorry, try again.")
 	elif victor == 3:
