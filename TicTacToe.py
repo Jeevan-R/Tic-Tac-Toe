@@ -45,6 +45,7 @@ class PerformanceSystem:
 	# Constructor
 	def __init__(self, player_nbr):
 		self.player_nbr = player_nbr
+		self.game_history = []
 
 	# Convert board to feature set
 	def get_featureset(cls, board):
@@ -125,31 +126,6 @@ class PerformanceSystem:
 		return sum([w*a for w, a in zip(weights, attributes)])
 		
 		
-	# Given initial board, generates game history
-	def play_game(self, board, weights):
-		victor = 0
-		game_history = []
-		
-		while not victor and board.count(0) > 0:
-			#Play my move
-			board = self.play_move(board, weights)
-			ExperimentGenerator.print_board(self, board)
-			game_history.append(' '.join(map(str,board)))
-			victor = self.evaluate_win(board)
-			
-			#Ask for opponent move if victor is not decided
-			if not victor:
-				opponent_move = input("Enter your move..")
-				
-				#Apply opponent move
-				board[int(opponent_move)]= 2
-				ExperimentGenerator.print_board(self, board)
-				game_history.append(' '.join(map(str,board)))
-				victor = self.evaluate_win(board)
-		
-		return victor, game_history
-
-		
 	# Pick and play best move
 	def play_move(self, board, weights):
 		#max_score = -100
@@ -201,7 +177,7 @@ class PerformanceSystem:
 			#Select move with highest board score
 			if move >= 0:
 				board[move] = self.player_nbr
-				print("selected move: " + str(move))
+				#print("selected move: " + str(move))
 		
 		#If only one space is available, select it for next move
 		elif open_spaces == 1:
@@ -222,6 +198,16 @@ class PerformanceSystem:
 			victor = 3
 		return victor
 
+	# Play human move	
+	def human_move(self, board, player_nbr):
+		#Ask human for move
+		human_move = input("Enter your move..")
+		
+		#Apply human move
+		board[int(human_move)]= player_nbr
+		#print_board(board)
+		return board
+
 	
 # Critic
 class Critic:
@@ -239,10 +225,10 @@ class Critic:
 		#Assign final_score for final board position
 		#Assign score estimate of successor board for other board positions
 		for idx, board in enumerate(reversed(game_history)):
-			if idx == 0 or idx == 1:
+			if idx == 0:
 				score = final_score
 			else:
-				print(next_board)
+				#print(next_board)
 				#Convert board to featureset
 				attributes = PerformanceSystem(1).get_featureset(next_board)
 				score = PerformanceSystem(1).board_score_estimate(attributes, weights)
@@ -250,9 +236,8 @@ class Critic:
 			next_board = list(map(int, board.split(' ')))
 			#Append training data
 			training_data.append([board, score])
-			skip = True
-			print(board)
-			print(score)
+			#print(board)
+			#print(score)
 		
 		return training_data
 	
@@ -324,63 +309,129 @@ class Generalizer:
 	
 # Main function
 def main():
+	import sys
+	# Make a list of command line arguments, omitting the [0] element
+	# which is the script itself.
+	args = sys.argv[1:]
+	if not args:
+		default_play = True
+	elif args[0] == '--human':
+		default_play = False
+	else:
+		print("usage: [--human] for human vs ai")
+		sys.exit(1)
+
+	if default_play:
+		print('Training the AI...')
+		#Play AI vs AI for 2000 games
+		for i in range(0,2000):
+			#Generate experiment
+			experiment = ExperimentGenerator()
+			board = experiment.generate_experiment()
+			#print(board)
+			#experiment.print_board(board)
+			
+			#Get initial weights
+			weights = experiment.read_weights()
+			#print("Initial weights:")
+			#print(weights)
+			
+			#Initialize players
+			player1 = PerformanceSystem(1)
+			player2 = PerformanceSystem(2)
+				
+			#Play game till it is either won or tied
+			victor = 0
+			while not victor and board.count(0) > 0:
+				#Player 1 move
+				board = player1.play_move(board, weights)
+				#experiment.print_board(board)
+				victor = player1.evaluate_win(board)
+			
+				#Player 2 move if victor is not decided
+				if not victor and board.count(0) > 0:
+					board = player2.play_move(board, weights)
+					#experiment.print_board(board)
+					victor = player2.evaluate_win(board)
+				
+			game_history = player1.game_history
+			#print(game_history)
+			'''
+			if victor == 1:
+				print("Player 1 wins!")
+			elif victor == 2:
+				print("Player 2 wins!")
+			else:
+				print("It is a tie!")
+			'''
+
+			#Convert game history to training examples
+			critic = Critic()
+			train_data = critic.generate_train_data(victor, game_history, weights)
+			#print(train_data)
+			
+			#Append training data to CSV dump
+			generalizer = Generalizer()
+			generalizer.save_train_data(train_data)
+			
+			#Update hypothesis from training data
+			new_weights = generalizer.train_algo(train_data, weights)
+			#print("New weights:")
+			#print(new_weights)
+			
+			#Write new weights to file
+			generalizer.update_weights(new_weights)
+	
+	# Play AI with human
+	
 	#Generate experiment
 	experiment = ExperimentGenerator()
 	board = experiment.generate_experiment()
 	#print(board)
 	experiment.print_board(board)
 	
-	#Get initial weights
+	#Get weights
 	weights = experiment.read_weights()
-	print("Initial weights:")
 	print(weights)
 	
-	#Initialize players
-	player1 = PerformanceSystem(1)
-	player2 = PerformanceSystem(2)
+	#Toss and initilize players
+	import random
+	play_first = lambda: True if random.random() >= 0.5 else False
+	if play_first():
+		ai = PerformanceSystem(1)
+	else:
+		ai = PerformanceSystem(2)
 		
 	#Play game till it is either won or tied
 	victor = 0
 	while not victor and board.count(0) > 0:
-		#Player 1 move
-		board = player1.play_move(board, weights)
-		experiment.print_board(board)
-		victor = player1.evaluate_win(board)
-	
-		#Player 2 move if victor is not decided
-		if not victor and board.count(0) > 0:
-			board = player2.play_move(board, weights)
+		#If human has to play first
+		if ai.player_nbr == 2:
+			board = ai.human_move(board, 1)
 			experiment.print_board(board)
-			victor = player2.evaluate_win(board)
-			
-	#victor, game_history = player1.play_game(board, weights)
-	#game_history = [player1.game_history, player2.game_history]
-	game_history = player1.game_history
-	#print(game_history)
-	if victor == 1:
-		print("Player 1 wins!")
-	elif victor == 2:
-		print("Player 2 wins!")
-	else:
+			victor = ai.evaluate_win(board)
+		
+		#Play AI move
+		if not victor and board.count(0) > 0:
+			board = ai.play_move(board, weights)
+			experiment.print_board(board)
+			ai.game_history.append(' '.join(map(str,board)))
+			victor = ai.evaluate_win(board)
+		
+		#If human has to play second
+		if ai.player_nbr == 1 and not victor and board.count(0) > 0:
+			board = ai.human_move(board, 2)
+			experiment.print_board(board)
+			victor = ai.evaluate_win(board)
+	
+	if victor == ai.player_nbr:
+		print("AI wins! Sorry, try again.")
+	elif victor == 3:
 		print("It is a tie!")
-
-	#Convert game history to training examples
-	critic = Critic()
-	train_data = critic.generate_train_data(victor, game_history, weights)
-	print(train_data)
+	else:
+		print("Congrats, you win!")	
 	
-	#Append training data to CSV dump
-	generalizer = Generalizer()
-	generalizer.save_train_data(train_data)
-	
-	#Update hypothesis from training data
-	new_weights = generalizer.train_algo(train_data, weights)
-	print("New weights:")
-	print(new_weights)
-	
-	#Write new weights to file
-	generalizer.update_weights(new_weights)
-	
+	print("Game over")
 	
 if __name__ == '__main__':
 	main()
